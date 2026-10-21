@@ -21,3 +21,32 @@ To save dependences if you end up installing more libraries, run `pip freeze > r
 ## .env file
 
 this is not committed for obvious reasons. it contains the database url and password. msg me on discord for the .env file
+
+## TODO
+
+[x] get all syllabi codes
+
+[ ] Use the codes we have to parse all syllabi docs
+
+[ ] populate the following tables:
+
+- instructors    (from editor list)
+- syllabi_docs  (from syllabi reader)
+  - this will be used for preprocessing. we will have an index later
+- terms         (lots of redundant data in syllabus docs)
+- department codes (or as an ENUM)
+- class list (uses dept code and course_num from the title)
+
+[ ] Then, connect these with foreign keys.
+
+[ ] use instructor table to cross reference with RateMyProfessor
+
+[ ] cross reference term list, dept code, and class list with grade distribution data
+
+[ ] somehow get urls of all rmp pages for TAMU CSTAT
+
+[ ] parse those and save scores
+
+[ ] maybe save comment metadata for ranking. i.e. look for keywords like "easy" or "homework"
+
+[ ] once all course codes are retrieved, get grade distribution data
