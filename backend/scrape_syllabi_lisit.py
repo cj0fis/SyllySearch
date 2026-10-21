@@ -5,21 +5,19 @@ import time
 
 import requests
 
-DB_PATH = "syllabi.db"
-INDEX_PATH = "syllabus_index.json"
 
-conn = sqlite3.connect(DB_PATH)
-cur = conn.cursor()
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS syllabi (
-    code        TEXT PRIMARY KEY,
-    title       TEXT,
-    subtitle    TEXT,
-    course_id   TEXT,
-    editors     TEXT
-)
-""")
+
+import psycopg2
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+conn = psycopg2.connect(DATABASE_URL)
+cur = connection.cursor()
+
 
 ORG_ID = {
     "Texas A&M University": "e49cc748-bf42-494b-b463-a84e8e35a878",
@@ -77,8 +75,13 @@ def fetch_items():
         
       
         cur.executemany("""
-            INSERT OR REPLACE INTO syllabi (code, title, subtitle, course_id, editors)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO syllabi_list (code, title, subtitle, course_id, editors)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (code) DO UPDATE SET
+                title = EXCLUDED.title,
+                subtitle = EXCLUDED.subtitle,
+                course_id = EXCLUDED.course_id,
+                editors = EXCLUDED.editors
         """, cleaned)
         #time.sleep(0.2) # rate limiting
         conn.commit()
@@ -86,6 +89,11 @@ def fetch_items():
 
 
 if __name__ == "__main__":
-    fetch_items()
+    # fetch_items()
+    pass
 
 conn.close()
+
+
+## TAMU GRAD DIST URL
+"https://anex.us/grades/?dept=CSCE&number=470"
