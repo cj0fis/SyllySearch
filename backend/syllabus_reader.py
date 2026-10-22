@@ -128,7 +128,7 @@ def extract_data(doc_data: dict):
     
 
 if __name__ == "__main__":
-    doc_data = get_doc_data("whk5nmo9u")
+    doc_data = get_doc_data("ldvj580dy")
 
     extract_data(doc_data)
     

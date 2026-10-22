@@ -108,7 +108,8 @@ def process_items(items) -> int:
             course_info["dept_code"],
             course_info["course_num"],
             course_info["section_num"],
-            course_info["course_id"]
+            course_info["course_id"],
+            item["term_id"],
         ) )
 
     ## add dept codes to enum
@@ -116,8 +117,8 @@ def process_items(items) -> int:
 
     ## add syllabi to database
     cur.executemany("""
-        INSERT INTO syllabi (entity_id, code, title, subtitle, dept, course_number, section_number, course_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO syllabi (entity_id, code, title, subtitle, dept, course_number, section_number, course_id, term_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (entity_id) DO UPDATE SET
             code = EXCLUDED.code,
             title = EXCLUDED.title,
@@ -126,6 +127,7 @@ def process_items(items) -> int:
             course_number = EXCLUDED.course_number,
             section_number = EXCLUDED.section_number,
             course_id = EXCLUDED.course_id
+            term_id = EXCLUDED.term_id
             
     """, processed)
 
@@ -139,6 +141,18 @@ def process_items(items) -> int:
 
     return len(items)
 
+def update_terms(items) -> int:
+    processed = [(
+        e["term_id"],
+        e["entity_id"]
+    ) for e in items]
+    cur.executemany("""
+        UPDATE syllabi
+        SET term_id = %s
+        WHERE entity_id = %s 
+        """, processed)
+    conn.commit()
+    return len(items)
 
 def fetch_items():
     first = fetch_page(0)
@@ -148,23 +162,21 @@ def fetch_items():
     page_size = first["pagination"]["page_size"]
     num_pages = math.ceil(total / page_size)
 
-    total_retrieved = 0 # len(first["items"])
+    total_retrieved = 0
     print(f"Total syllabi: {total}, pages: {num_pages}")
     print()
 
-    #print(f"Fetched page 0, total items: {total_retrieved}")
     
-    for page in range(168, num_pages):
+    for page in range(0, num_pages):
         data = fetch_page(page)
-        #print(json.dumps(data["items"][0], indent=2))
-        num_processed = process_items(data["items"])
         
+        #num_processed = process_items(data["items"])
+        num_processed = update_terms(data["items"])
         total_retrieved += num_processed
         
         print(f"Fetched page {page}, total items: {total_retrieved}")
         
-        #time.sleep(0.2) # rate limiting
-        # conn.commit()
+        
 
 
 

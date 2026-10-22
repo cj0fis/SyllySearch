@@ -1,0 +1,25 @@
+{
+  "code": "klgcjez6d",
+  "title": "AERO 307 900 (38410)",
+  "total": 15088,
+  "editors": [
+    {
+      "entity_id": "fe1b6e35-0f1e-4750-8f7d-360c56a794bb",
+      "full_name": "Bret Van Poppel",
+      "last_name": "Van Poppel",
+      "first_name": "Bret",
+      "has_headshot": false
+    }
+  ],
+  "term_id": "781a5793-472a-4c46-9a64-e2065ed9ecf1",
+  "entity_id": "479b2b9a-a87c-4364-945c-115d2d14f46b",
+  "following": false,
+  "sub_title": "AERO ENGR LAB",
+  "term_name": "Spring 2027 - College Station",
+  "is_student": false,
+  "visibility": "general_public",
+  "entity_type": "section",
+  "family_name": "syllabus",
+  "has_upload_thumbnail": false,
+  "has_published_uploads": false
+}
