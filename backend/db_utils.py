@@ -70,15 +70,19 @@ if __name__ == "__main__":
     syllabi = get_syllabi(dept, num)
     grade_dists = get_grade_dist(dept, num)
 
+    # for s in syllabi:
+    #     last_name = s[6].lower()
+    #     section = s[3]
+    #     print(s)
+    #     for d in grade_dists: 
+    #         if str(d["section"]) == section and d["last_name"].lower() == last_name:
+    #             print(f"\tTERM: {d["semester"]} {d["year"]}  \t GPA: {d["gpa"]}")
+
+    print("===== Available Syllabi =====\n")
     for s in syllabi:
-        last_name = s[6].lower()
-        section = s[3]
         print(s)
-        for d in grade_dists: 
-            if str(d["section"]) == section and d["last_name"].lower() == last_name:
-                print(f"\tTERM: {d["semester"]} {d["year"]}  \t GPA: {d["gpa"]}")
-    # print("===== Available Syllabi =====\n")
     
-    
-    # print("\n===== Available Grade Distributions =====\n")
+    print("\n===== Available Grade Distributions =====\n")
+    for g in grade_dists:
+        print(g)
     
