@@ -1,40 +1,55 @@
-import sqlite3
-import time
-from rmp_client import RMPClient
+import psycopg2
+import os
+import json
+from dotenv import load_dotenv
 # https://github.com/amaanjaved1/Rate-My-Professors-API-Client-Python
+from rmp_client import RMPClient
 
-DB_PATH = "syllabi.db"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 SCHOOL_ID = "1003" # corresponding to "Texas A&M University at College Station"
 
 # pull unique professor (editor) names from syllabi db
 def get_professor_names(conn):
-    rows = conn.execute("SELECT editors FROM syllabi WHERE editors IS NOT NULL").fetchall()
+    with conn.cursor() as cur:
+        cur.execute("""
+        SELECT first_name, last_name 
+        FROM instructors 
+        WHERE first_name IS NOT NULL OR last_name IS NOT NULL""")
+        rows = cur.fetchall()
 
     names = set()
 
-    for (editors,) in rows:
-        for name in editors.split(","):
-            name = name.strip()
-            if name:
-                names.add(name)
+    # assuming pattern is first_name " " last_name
+    for (first_name, last_name) in rows:
+        name = " ".join(
+            part.strip()
+            for part in (first_name or "", last_name or "")
+            if part and part.strip()
+        )
+
+        if name:
+            names.add(name)
 
     return names
 
 def create_table():
-    conn = sqlite3.connect(DB_PATH)
+    conn = psycopg2.connect(DATABASE_URL)
 
     try:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS rmp (
-                professor_id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                department TEXT,
-                overall_rating REAL,
-                num_ratings INTEGER,
-                percent_take_again REAL,
-                difficulty REAL
-            )
-        """)
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS rmp (
+                    professor_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    department TEXT,
+                    overall_rating REAL,
+                    num_ratings INTEGER,
+                    percent_take_again REAL,
+                    difficulty REAL
+                )
+            """)
         conn.commit()
 
         syllabus_names = get_professor_names(conn)
@@ -84,19 +99,26 @@ def create_table():
                     professor.level_of_difficulty,
                 ))
 
-        conn.executemany("""
-            INSERT OR REPLACE INTO rmp (
-                professor_id,
-                name,
-                department,
-                overall_rating,
-                num_ratings,
-                percent_take_again,
-                difficulty
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, rows_to_insert)
-
+        with conn.cursor() as cur:
+            cur.executemany("""
+                INSERT INTO rmp (
+                    professor_id,
+                    name,
+                    department,
+                    overall_rating,
+                    num_ratings,
+                    percent_take_again,
+                    difficulty
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (professor_id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    department = EXCLUDED.department,
+                    overall_rating = EXCLUDED.overall_rating,
+                    num_ratings = EXCLUDED.num_ratings,
+                    percent_take_again = EXCLUDED.percent_take_again,
+                    difficulty = EXCLUDED.difficulty
+            """, rows_to_insert)
         conn.commit()
         print(f"Finished inserting {len(rows_to_insert)} professor records into the rmp table.")
 
