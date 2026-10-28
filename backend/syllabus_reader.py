@@ -88,11 +88,29 @@ def extract_section_from_component(component: dict):
     }
 
 def process_html_components(html):
+
+    EXCLUDED_KEYWORDS = ["Texas A&M at Galveston"]
     
     sections = [extract_section_from_component(c) for c in html ]
     sections = [s for s in sections if (not s["name"] or s["name"] not in EXCLUDED_SECTIONS)]
 
+    cleaned_sections = []
     for s in sections:
+        lower_text = s["text"].lower()
+        include = True
+        for keyword in EXCLUDED_KEYWORDS:
+            if keyword.lower() in lower_text:
+                include = False
+                break
+        if include:
+            cleaned_sections.append(s)
+
+    if cleaned_sections[0]["name"] == None:
+        cleaned_sections[0]["name"] = "Course Information"
+        
+        
+            
+    for s in cleaned_sections:
         print("====", s["name"] or "(no name)", "====")
         print(s["text"][:500], "\n")
 
@@ -103,10 +121,10 @@ def extract_data(doc_data: dict):
     entity_id = doc_data["entity_id"]
 
     #TODO: save this to database
-    title = doc_data["title"]
-    dept_code = title[0:4]
-    course_num = title[5:8]
-    section_num = title[9:12]
+    title = doc_data["title"].split()
+    dept_code = title[0]
+    course_num = title[1]
+    section_num = title[2]
 
     sub_title = doc_data["sub_title"]
 
@@ -130,7 +148,8 @@ def extract_data(doc_data: dict):
 if __name__ == "__main__":
     doc_data = get_doc_data("ldvj580dy")
 
-    extract_data(doc_data)
+    # extract_data(doc_data)
+    process_html_components(doc_data["components"])
     
 
     # print(json.dumps(doc_data,indent=2))
