@@ -1,7 +1,19 @@
+import time
+
 import requests
 import json
 
 from bs4 import BeautifulSoup
+
+import psycopg2
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+conn = psycopg2.connect(DATABASE_URL)
+cur = conn.cursor()
 
 EXCLUDED_SECTIONS = [
         "Late Work Policy",
@@ -110,9 +122,11 @@ def process_html_components(html):
         
         
             
-    for s in cleaned_sections:
-        print("====", s["name"] or "(no name)", "====")
-        print(s["text"][:500], "\n")
+    # for s in cleaned_sections:
+    #     print("====", s["name"] or "(no name)", "====")
+    #     print(s["text"][:500], "\n")
+
+    return cleaned_sections
 
 def extract_data(doc_data: dict):
     code = doc_data["code"]
@@ -143,13 +157,67 @@ def extract_data(doc_data: dict):
     process_html_components(html_components)
 
 
+def scrape_syllabi_contents():
+
+    ## get codes that have not been scraped yet
+    cur.execute("""
+    SELECT entity_id, code from syllabi
+    WHERE syllabi.sections is NULL;
+    """)
+    to_update = cur.fetchall()
+    print(f"Found {len(to_update)} docs to scrape...")
+
     
 
-if __name__ == "__main__":
-    doc_data = get_doc_data("ldvj580dy")
+    scraped = []
+    batch_size = 25
+    max_attempts = 5
+    for entity_id, code in to_update:
 
-    # extract_data(doc_data)
-    process_html_components(doc_data["components"])
+        ## attempt to get doc_data
+        doc_data = None
+        for attempt in range(max_attempts):
+            try:
+                doc_data = get_doc_data(code)
+                print(f"Scraped {code} successfully")
+                break
+            except:
+                time.sleep(1)
+                print(f"[ERROR] Scraping failed on code: {code}. Sleeping for 1s. Attempt {attempt}/{max_attempts}")
+
+        if doc_data:
+            sections = process_html_components(doc_data["components"])
+            scraped.append((json.dumps(sections), entity_id))
+
+
+        if len(scraped) >= batch_size:
+            cur.executemany("""
+                UPDATE syllabi
+                SET sections = %s::jsonb
+                WHERE entity_id = %s
+                """, scraped)
+            conn.commit()
+            print(f"committed {len(scraped)} syllabi to the database")
+            scraped = []
+
+    if len(scraped) > 0:
+        cur.executemany("""
+            UPDATE syllabi
+            SET sections = %s::jsonb
+            WHERE entity_id = %s
+            """, scraped)
+
+        conn.commit()
+        print(f"committed {len(scraped)} syllabi to the database")
+        scraped = []
+
+if __name__ == "__main__":
+    scrape_syllabi_contents()
+    
+    # doc_data = get_doc_data("ldvj580dy")
+
+    # # extract_data(doc_data)
+    # process_html_components(doc_data["components"])
     
 
     # print(json.dumps(doc_data,indent=2))
