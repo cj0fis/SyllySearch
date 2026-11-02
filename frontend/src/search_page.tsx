@@ -4,12 +4,12 @@ import { Badge, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@manti
 
 import type { QueryResponse, SearchResult } from './types'
 
-function ScorePill({ label, value, color }: { label: string, value: number | null, color: string }) {
+function ScorePill({ label, value, color }: { label: string, value: string | number | null, color: string }) {
   if (value === null) return null
   return (
     <Tooltip label={label}>
       <Badge color={color} variant='light' size='lg'>
-        {label}: {(value * 100).toFixed(0)}%
+        {label}: {value}
       </Badge>
     </Tooltip>
   )
@@ -32,18 +32,20 @@ function ResultCard({ result }: { result: SearchResult }) {
           </Badge>
         </Group>
 
-        <Text size='sm' c='dimmed'>
-          {doc.instructors.map(i => `${i.first} ${i.last}`).join(', ')}
-        </Text>
+        <Group gap='xs'>
+          <Text size='sm' c='dimmed'>
+            {doc.instructors.map(i => `${i.first} ${i.last}`).join(', ')}
+          </Text>
+          <ScorePill label='Prof. Rating' value={(rating * 100).toFixed(1) + "%"} color='green' />
+          <ScorePill label='Prof. Difficulty' value={(difficulty * 100).toFixed(1) + "%"} color='orange' />
+        </Group>
 
         <Divider />
 
         <Text size='sm' lineClamp={3}>{doc.description}</Text>
 
         <Group gap='xs'>
-          <ScorePill label='Rating' value={rating} color='green' />
-          <ScorePill label='GPA' value={gpa} color='teal' />
-          <ScorePill label='Difficulty' value={difficulty} color='orange' />
+          <ScorePill label='GPA' value={(gpa).toFixed(2)} color='teal' />
           {doc.has_text && <Badge color='violet' variant='light'>Has Syllabus</Badge>}
         </Group>
 
