@@ -34,9 +34,9 @@ replace "csce470" with whatever your query is.
 
 [x] get all syllabi codes
 
-[ ] Use the codes we have to parse all syllabi docs
+[x] Use the codes we have to parse all syllabi docs
 
-[ ] populate the following tables:
+[x] populate the following tables:
 
 - instructors    (from editor list)
 - syllabi_docs  (from syllabi reader)
@@ -45,16 +45,16 @@ replace "csce470" with whatever your query is.
 - department codes (or as an ENUM)
 - class list (uses dept code and course_num from the title)
 
-[ ] Then, connect these with foreign keys.
+[x] Then, connect these with foreign keys.
 
-[ ] use instructor table to cross reference with RateMyProfessor
+[x] use instructor table to cross reference with RateMyProfessor
 
-[ ] cross reference term list, dept code, and class list with grade distribution data
+[x] cross reference term list, dept code, and class list with grade distribution data
 
-[ ] somehow get urls of all rmp pages for TAMU CSTAT
+[x] somehow get urls of all rmp pages for TAMU CSTAT
 
-[ ] parse those and save scores
+[x] parse those and save scores
 
-[ ] maybe save comment metadata for ranking. i.e. look for keywords like "easy" or "homework"
+[x] maybe save comment metadata for ranking. i.e. look for keywords like "easy" or "homework"
 
-[ ] once all course codes are retrieved, get grade distribution data
+[x] once all course codes are retrieved, get grade distribution data
