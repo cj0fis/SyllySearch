@@ -24,6 +24,11 @@ STOP = {"a", "an", "and", "the", "of", "to", "in", "for", "on", "is", "with",
 
 
 def tokenize(text):
+    """
+    Lowercases, strips stop words, extracts regular tokens, and fuses course codes
+    Returns:
+        list of tokens
+    """
     text = (text or "").lower()
     toks = [t for t in TOKEN_RE.findall(text) if t not in STOP]
     toks += [m.group(1) + m.group(2) for m in CODE_RE.finditer(text)]  # "csce 221" -> "csce221"
@@ -32,14 +37,31 @@ def tokenize(text):
 
  
 # BM25F: syllabus text, titles and descriptions are scored; dept/instructor/level are filters (change if needed)
-FIELD_WEIGHTS = {"course_code": 3.0, "subtitle": 2.5, "headings": 1.0, "description": 2.0, "body": 1.0}
-FIELD_B = {"course_code": 0.0, "subtitle": 0.3, "headings": 0.5, "description": 0.6, "body": 0.75}
+FIELD_WEIGHTS = {
+    "course_code":  3.0,        # Exact code match is a very strong signal
+    "subtitle":     2.5,        # Course name is highly relevant
+    "headings":     1.0,        # Structured text, medium weight
+    "description":  2.0,        # Section headers
+    "body":         1.0         # Full syllabus text, longest, most noise
+    }
+
+# Within the body sections, how much are each section weighted?
+FIELD_B = {
+    "course_code": 0.0,
+    "subtitle": 0.3,
+    "headings": 0.5,
+    "description": 0.6,
+    "body": 0.75
+    }
+
 K1 = 1.2
 
 
 class BM25FIndex:
     def __init__(self, weights=None, b=None, k1=K1):
-        self.w, self.b, self.k1 = weights or FIELD_WEIGHTS, b or FIELD_B, k1
+        self.w = weights or FIELD_WEIGHTS
+        self.b = b or FIELD_B
+        self.k1 = k1
         self.postings = defaultdict(dict)  # term -> {doc_idx: {field: tf}}
         self.field_len, self.avg_len, self.docs = [], {}, []
 
