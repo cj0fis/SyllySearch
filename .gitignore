@@ -182,3 +182,5 @@ cython_debug/
 
 # data visualizations folder <- from data_vis.py
 figures/index.pkl
+
+index.pkl
