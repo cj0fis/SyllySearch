@@ -26,6 +26,10 @@ this is not committed for obvious reasons. it contains the database url and pass
 
 run `python server.py` from backend
 
+you can test this out at `localhost:8080/query?query_text=csce470`
+
+replace "csce470" with whatever your query is.
+
 ## TODO
 
 [x] get all syllabi codes
