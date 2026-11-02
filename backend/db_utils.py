@@ -2,7 +2,7 @@ import psycopg2
 from dotenv import load_dotenv
 import os
 
-from scrape_grade_dist import get_grade_dist
+from backend.scraping_scripts.scrape_grade_dist import get_grade_dist
 
 load_dotenv()
 
