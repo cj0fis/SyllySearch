@@ -22,6 +22,10 @@ To save dependences if you end up installing more libraries, run `pip freeze > r
 
 this is not committed for obvious reasons. it contains the database url and password. msg me on discord for the .env file
 
+## How to run the backend
+
+run `python server.py` from backend
+
 ## TODO
 
 [x] get all syllabi codes

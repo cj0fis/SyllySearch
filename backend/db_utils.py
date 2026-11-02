@@ -1,20 +1,34 @@
+from typing import Generator
+
 import psycopg2
 from dotenv import load_dotenv
 import os
 
-from backend.scraping_scripts.scrape_grade_dist import get_grade_dist
+from scraping_scripts.scrape_grade_dist import get_grade_dist
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL)
-cur = conn.cursor()
+#conn = psycopg2.connect(DATABASE_URL)
+#  cur = conn.cursor()
+
+def get_db() -> Generator:
+    """
+    FastAPI dependency that opens a connection per-request and closes it after.
+    """
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
-def get_dept_codes() -> list[str]:
+def get_dept_codes(conn) -> list[str]:
     """
     Returns all department codes from the postgres database
     """
+
+    cur = conn.cursor()
     cur.execute("""
         SELECT e.enumlabel
         FROM pg_type t
@@ -26,7 +40,7 @@ def get_dept_codes() -> list[str]:
     dept_codes = [row[0] for row in cur.fetchall()]
     return dept_codes
 
-def get_syllabi(dept_code: str, course_num: str) -> list[str]:
+def get_syllabi(conn, dept_code: str, course_num: str) -> list[str]:
     """
     Given a course code and number (e.g. CSCE 221),
     Returns all rows that match that query
@@ -57,32 +71,32 @@ def get_syllabi(dept_code: str, course_num: str) -> list[str]:
     cur.execute(sql, (dept_code, course_num))
 
     rows = cur.fetchall()
-    # for row in rows:
-    #     print(row)
+
 
     return rows
-if __name__ == "__main__":
-    # codes = get_dept_codes()
-    # print(len(codes))
 
-    dept = "CSCE"
-    num = "221"
-    syllabi = get_syllabi(dept, num)
-    grade_dists = get_grade_dist(dept, num)
+# if __name__ == "__main__":
+#     # codes = get_dept_codes()
+#     # print(len(codes))
 
-    # for s in syllabi:
-    #     last_name = s[6].lower()
-    #     section = s[3]
-    #     print(s)
-    #     for d in grade_dists: 
-    #         if str(d["section"]) == section and d["last_name"].lower() == last_name:
-    #             print(f"\tTERM: {d["semester"]} {d["year"]}  \t GPA: {d["gpa"]}")
+#     dept = "CSCE"
+#     num = "221"
+#     syllabi = get_syllabi(dept, num)
+#     grade_dists = get_grade_dist(dept, num)
 
-    print("===== Available Syllabi =====\n")
-    for s in syllabi:
-        print(s)
+#     # for s in syllabi:
+#     #     last_name = s[6].lower()
+#     #     section = s[3]
+#     #     print(s)
+#     #     for d in grade_dists: 
+#     #         if str(d["section"]) == section and d["last_name"].lower() == last_name:
+#     #             print(f"\tTERM: {d["semester"]} {d["year"]}  \t GPA: {d["gpa"]}")
+
+#     print("===== Available Syllabi =====\n")
+#     for s in syllabi:
+#         print(s)
     
-    print("\n===== Available Grade Distributions =====\n")
-    for g in grade_dists:
-        print(g)
+#     print("\n===== Available Grade Distributions =====\n")
+#     for g in grade_dists:
+#         print(g)
     

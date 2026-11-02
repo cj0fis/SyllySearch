@@ -189,7 +189,7 @@ def signals(doc, rmp, grades):
     return mean(rs), mean(ds), mean(gs)
 
 
-def rerank(scored, docs, intent, rmp, grades):
+def rerank(scored, docs, intent, rmp, grades, include_full_doc: bool = False):
     if not scored:
         return []
     w_bm, w_r, w_d, w_g = WEIGHTS[intent]
@@ -200,7 +200,12 @@ def rerank(scored, docs, intent, rmp, grades):
         rating, diff, gpa = signals(d, rmp, grades)
         diff_sig = (1 - diff) if intent == "easy" else diff  # easy -> low difficulty, hard -> high
         final = w_bm * s / top + w_r * rating + w_d * diff_sig + w_g * (gpa if intent != "hard" else 1 - gpa)
-        out.append({"doc": d, "bm25f": s, "rating": rating, "difficulty": diff, "gpa": gpa, "score": final})
+        if not include_full_doc:
+            slim = {k: v for k, v in d.items() if k not in ("headings", "body")}
+            out.append({"doc": slim, "bm25f": s, "rating": rating, "difficulty": diff, "gpa": gpa, "score": final})
+        else:
+            out.append({"doc": d, "bm25f": s, "rating": rating, "difficulty": diff, "gpa": gpa, "score": final})
+            
     out.sort(key=lambda r: -r["score"])
     seen, deduped = set(), []  # one row per (course, instructors) -- keep the best section/term
     for r in out:
@@ -245,9 +250,9 @@ class SyllySearch:
 # Supabase loader
 def load_from_db(database_url):
     import psycopg2  # imported lazily so --demo works without it
-    conn = psycopg2.connect(database_url)
+    conn = psycopg2.connect(database_url, options="-c statement_timeout=30000")
     cur = conn.cursor()
-
+    print("loading from database")
     cur.execute("""
         SELECT s.entity_id, s.code, s.dept, s.course_number, s.section_number, s.subtitle, s.sections,
                t.name, i.entity_id, i.first_name, i.last_name
@@ -256,6 +261,7 @@ def load_from_db(database_url):
         LEFT JOIN instructors i ON i.entity_id = isj.instructor_id
         LEFT JOIN terms t ON t.entity_id = s.term_id
     """)
+
     by_id = {}
     for eid, code, dept, num, sec, sub, sections, term, iid, first, last in cur.fetchall():
         d = by_id.get(eid)
