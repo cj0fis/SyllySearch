@@ -82,7 +82,7 @@ def print_grades(grade_dist: list[dict], dept_code, course_num):
         full_term += " " * (term_width - len(full_term))
         full_term += " " + g["year"]
 
-        print(f"{g["section"]} {full_name} {full_term} {g["gpa"]}")
+        print(f"{g['section']} {full_name} {full_term} {g['gpa']}")
 
 def save_grades(grade_dist: list[dict], dept_code, course_num):
     rows = [(
