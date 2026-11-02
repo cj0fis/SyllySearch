@@ -1,6 +1,8 @@
 import { AppShell, Text, Burger, Group } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 
+import SearchPage from './search_page.tsx'
+
 function App() {
   const [opened, { toggle }] = useDisclosure()
 
@@ -23,7 +25,7 @@ function App() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <Text>Application main</Text>
+        <SearchPage />
       </AppShell.Main>
     </AppShell>
   )

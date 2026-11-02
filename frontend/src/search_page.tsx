@@ -1,0 +1,92 @@
+// import {react} from 'react'
+import { useState, useEffect } from 'react'
+import { Badge, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@mantine/core'
+
+import type { QueryResponse, SearchResult } from './types'
+
+function ScorePill({ label, value, color }: { label: string, value: number | null, color: string }) {
+  if (value === null) return null
+  return (
+    <Tooltip label={label}>
+      <Badge color={color} variant='light' size='lg'>
+        {label}: {(value * 100).toFixed(0)}%
+      </Badge>
+    </Tooltip>
+  )
+}
+
+function ResultCard({ result }: { result: SearchResult }) {
+  const { doc, rating, difficulty, gpa, score } = result
+
+  return (
+    <Card shadow='sm' padding='lg' radius='md' withBorder>
+      <Stack gap='xs'>
+
+        <Group justify='space-between' align='flex-start'>
+          <Stack gap={2}>
+            <Text fw={700} size='lg'>{doc.course_code} — {doc.subtitle}</Text>
+            <Text size='sm' c='dimmed'>{doc.term} · Section {doc.section}</Text>
+          </Stack>
+          <Badge color='blue' variant='filled' size='lg'>
+            Score: {(score * 100).toFixed(1)}%
+          </Badge>
+        </Group>
+
+        <Text size='sm' c='dimmed'>
+          {doc.instructors.map(i => `${i.first} ${i.last}`).join(', ')}
+        </Text>
+
+        <Divider />
+
+        <Text size='sm' lineClamp={3}>{doc.description}</Text>
+
+        <Group gap='xs'>
+          <ScorePill label='Rating' value={rating} color='green' />
+          <ScorePill label='GPA' value={gpa} color='teal' />
+          <ScorePill label='Difficulty' value={difficulty} color='orange' />
+          {doc.has_text && <Badge color='violet' variant='light'>Has Syllabus</Badge>}
+        </Group>
+
+      </Stack>
+    </Card>
+  )
+}
+
+export default function SearchPage() {
+    const [query, setQuery] = useState('')
+    const [results, setResults] = useState<SearchResult[] | null>(null)
+
+
+
+
+    useEffect(() => {
+        if (query.trim() === '')
+            return
+
+        const delay = setTimeout(async () => {
+            try {
+                const response = await fetch(`http://localhost:8080/query?query_text=${encodeURIComponent(query)}`)
+                const data: QueryResponse = await response.json()
+                setResults(data[1])
+            } catch (error) {
+                console.error('Search failed:', error)
+            }
+        }, 500)
+
+        return () => clearTimeout(delay)
+    }, [query])
+    return (
+    <Stack>
+      <Text size='xl'>Search</Text>
+      <Input
+        placeholder="Search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      
+      {results && results.map((result, index) => (
+        <ResultCard key={index} result={result} />
+      ))}
+    </Stack>
+  )
+}
