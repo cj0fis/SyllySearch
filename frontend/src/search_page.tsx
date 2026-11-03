@@ -1,9 +1,10 @@
 // import {react} from 'react'
 import { useState, useEffect } from 'react'
-import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@mantine/core'
+import { Badge, Button, Card, Divider, Group, Input, RangeSlider, Stack, Text, Tooltip } from '@mantine/core'
 
 import type { QueryResponse, SearchResult } from './types'
 import { Link } from 'react-router-dom'
+import ParamSlider from './param_slider'
 
 function ScorePill({ label, value, color }: { label: string, value: string | number | null, color: string }) {
   if (value === null) return null
@@ -126,6 +127,11 @@ export default function SearchPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      
+      <ParamSlider min={0.0} max={4.0} label="GPA" />
+      <ParamSlider min={0} max={100} label="Prof. Rating" />
+      <ParamSlider min={0} max={100} label="Prof. Difficulty" />
+      
       
       {results && results.map((result, index) => (
         <ResultCard key={index} result={result} />
