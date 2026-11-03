@@ -2,6 +2,9 @@ import { AppShell, Text, Burger, Group } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 
 import SearchPage from './search_page.tsx'
+// import { SyllabusViewer } from './syllabus_viewer.tsx'
+
+
 
 function App() {
   const [opened, { toggle }] = useDisclosure()
@@ -25,7 +28,8 @@ function App() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <SearchPage />
+        {/* <SyllabusViewer code="7fxrry8d6"/> */}
+        <SearchPage/>
       </AppShell.Main>
     </AppShell>
   )

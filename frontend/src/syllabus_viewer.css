@@ -1,0 +1,74 @@
+.syllabus {
+  width: min(100%, 900px);
+  margin: 0 auto;
+  color: #222;
+  font-family: system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+.syllabus-header {
+  margin-bottom: 1rem;
+  padding: 1.5rem;
+  color: white;
+  background: #500000;
+  border-radius: 8px;
+}
+
+.syllabus-header h1 {
+  margin: 0;
+}
+
+.syllabus-header p {
+  margin: 0.25rem 0;
+}
+
+.syllabus-section {
+  margin-bottom: 1rem;
+  padding: 1.5rem;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+/* Remove fixed dimensions from the source HTML. */
+.syllabus-section .component {
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+.syllabus-section h2 {
+  color: #500000;
+}
+
+.syllabus-section img {
+  max-width: 100%;
+  height: auto;
+}
+
+.syllabus-section table {
+  display: block;
+  width: 100% !important;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.syllabus-section th,
+.syllabus-section td {
+  width: auto !important;
+  min-width: 120px;
+  padding: 8px !important;
+  border: 1px solid #aaa !important;
+  vertical-align: top;
+  text-align: left;
+}
+
+.syllabus-section .heading-cells-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.syllabus-section .thumbnail-image {
+  width: 90px;
+}
