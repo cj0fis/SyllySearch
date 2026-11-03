@@ -15,7 +15,6 @@ import re
 import sys
 from collections import Counter, defaultdict
 
- 
 # Tokenising
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 CODE_RE = re.compile(r"\b([a-z]{3,4})[\s-]?(\d{3})\b")
@@ -134,12 +133,51 @@ NOISE = {"level", "course", "courses", "class", "classes", "professor", "prof", 
 # accidently queried "best professor for csce 221" and got nothing
 QUERY_IGNORE = STOP | NOISE
 
-def parse_query(q, dept_codes=()):
+# names aren't in the syllabi BM25F indexes (only contains syllabi fields)
+# instructors in instructors table
+# this name index exists to look for matches (yes/no) instead of a grade (BM25)
+# why? wanted to search for what classes a specific instructor is teaching, but current implementation returns no relevant results for names
+
+def normalize_name(s):
+    # turn name from db into list of lowercase words to match names in index w/ names in query
+    return re.sub(r"[^a-z]", " ", (s or "").lower()).split()
+
+# map instructor names to instructr ids
+def build_name_index(docs):
+    names = defaultdict(set)
+    for d in docs:
+        for instructors in d["instructors"]:
+            for tok in normalize_name(instructors["first"]) + normalize_name(instructors["last"]):
+                names[tok].add(instructors["id"])
+
+    return names
+
+# which instructor is the user looking for?
+# search engine will filter courses by that instructor
+def extract_instructors(tokens, names, reserved):
+    matches = []
+    misses = []
+    for t in tokens:
+        if t in names and t not in reserved and len(t) > 2:
+            matches.append(names[t])
+        else:
+            misses.append(t)
+    ids = set.intersection(*matches) if matches else None
+    if matches and not ids:
+        return None, tokens
+    if ids:
+        misses = [t for t in misses if len(t) > 1]
+    return ids, misses
+
+# potential issue:
+# misspelling any of these specific filters (level -> levle) breaks the search
+# level can't be parsed/found if the word itself misspelled
+def parse_query(q, dept_codes=(), names = None):
     """'easy 300 level CSCE course' -> intent=easy, level=3, dept=CSCE, text=''
     'best csce 221 professor' -> intent=good, course=('CSCE', '221'), text=''"""
     ql = q.lower()
     dept_codes = {d.upper() for d in dept_codes}
-    out = {"intent": None, "level": None, "dept": None, "course": None, "text": ""}
+    out = {"intent": None, "level": None, "dept": None, "course": None, "text": "", "instructor_ids": None}
 
     # "300 level" always means a level filter (so "math 400 level" is dept=MATH, level=4)
     m = re.search(r"\b([1-6])00[\s-]?(?:level|lvl)\b", ql)
@@ -161,8 +199,14 @@ def parse_query(q, dept_codes=()):
             out["level"] = int(m.group(1))
             ql = ql[:m.start()] + " " + ql[m.end():]
 
+    tokens = TOKEN_RE.findall(ql)
+    if names:
+        # ignore these terms when later filtering for instructor name in extract_instructors
+        reserved = ({w for ws in INTENTS.values() for w in ws} | QUERY_IGNORE | {d.lower() for d in dept_codes})
+        out["instructor_ids"], tokens = extract_instructors(tokens, names, reserved)
+
     keep = []
-    for t in TOKEN_RE.findall(ql):
+    for t in tokens:
         if out["dept"] is None and out["course"] is None and t.upper() in dept_codes:
             out["dept"] = t.upper()  # "csce" alone is a filter
             continue
@@ -239,18 +283,46 @@ class SyllySearch:
     def __init__(self, docs, rmp, grades, dept_codes):
         self.docs, self.rmp, self.grades, self.dept_codes = docs, rmp, grades, dept_codes
         self.index = BM25FIndex().build(docs)
+        self.names = build_name_index(docs)
 
     def search(self, query, k=10):
-        p = parse_query(query, self.dept_codes)
+        p = parse_query(query, self.dept_codes, self.names)
+        ids = p["instructor_ids"]
+
+        # name only specific filter: if i search only for a name, i should return only results of that name
+        # difference between "leyk" (return only leyk courses) and "leyk csce 221" (put leyk csce 221 first, then the rest of the csce 221)
+        name_only = (
+            ids is not None
+            and p["course"] is None
+            and p["dept"] is None
+            and p["level"] is None
+        )
+
         cands = {i for i, d in enumerate(self.docs)
                  if (p["course"] is None or (d["dept"], str(d["course_number"])) == p["course"])
                  and (p["dept"] is None or d["dept"] == p["dept"])
-                 and (p["level"] is None or str(d["course_number"])[:1] == str(p["level"]))}
+                 and (p["level"] is None or str(d["course_number"])[:1] == str(p["level"]))
+                 and (not name_only or any(instructors["id"] in ids for instructors in d["instructors"]))}
         if p["text"]:
             scored = self.index.search(p["text"], candidates=cands)
         else:  # pure filter/intent query like "easy 300 level csce": every filtered doc is a candidate
             scored = [(i, 1.0) for i in cands]
-        return p, rerank(scored, self.docs, p["intent"], self.rmp, self.grades)[:k]
+
+        # only if a name was included in thequery, then reorder it so that the syllabi matching that instructor show up first,
+        # then the rest of the original order is preserved
+        # if there's no name, same behavior as before
+        results = rerank(scored, self.docs, p["intent"], self.rmp, self.grades)
+        if ids:
+            results.sort(
+                key = lambda r: (
+                    not any(
+                        instructors["id"] in ids
+                        for instructors in r["doc"]["instructors"]
+                    ),
+                    -r["score"]
+                )
+            )
+        return p, results[:k]
 
     def save(self, path):
         with open(path, "wb") as fh:
@@ -349,6 +421,11 @@ def show(engine, q):
 if __name__ == "__main__":
     args = sys.argv[1:]
     if not args or args[0] == "--demo":
+        # from dotenv import load_dotenv
+        # load_dotenv()
+        # eng = SyllySearch(*load_from_db(os.getenv("DATABASE_URL")))
+        # print(len(eng.names), "leyk" in eng.names, "lightfoot" in eng.names)
+        # print([k for k in eng.names if "eyk" in k], [k for k in eng.names if "ightfoot" in k])
         eng = demo_engine()
         for q in ["easy 300 level csce course", "best csce 221 professor", "hard csce", "data structures"]:
             show(eng, q)
