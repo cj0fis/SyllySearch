@@ -68,7 +68,7 @@ function ResultCard({ result }: { result: SearchResult }) {
           <Group gap="xs">
             <ScorePill
               label="GPA"
-              value={gpa.toFixed(2)}
+              value={(gpa*4).toFixed(2)}
               color="teal"
             />
 
