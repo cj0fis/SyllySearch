@@ -181,4 +181,5 @@ cython_debug/
 .cursorindexingignore
 
 # data visualizations folder <- from data_vis.py
-figures/index.pkl
+figures/
+index.pkl

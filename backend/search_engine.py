@@ -22,6 +22,24 @@ CODE_RE = re.compile(r"\b([a-z]{3,4})[\s-]?(\d{3})\b")
 STOP = {"a", "an", "and", "the", "of", "to", "in", "for", "on", "is", "with",
         "at", "by", "or", "this", "that", "be", "are", "as", "from", "will", "you"}
 
+# light stemming on plurals
+# queries varying by plurality shouldn't return significantly different results
+# ex: "databases" vs "database"
+def stem(tok):
+    # don't touch very small tokens or class codes
+    if len(tok) <= 3 or any(c.isdigit() for c in tok):
+        return tok
+    if tok.endswith("ies") and len(tok) > 4:
+        return tok[:-3] + "y"
+    if tok.endswith(("ss", "us", "is")):
+        return tok
+    if tok.endswith("zzes"):
+        return tok[:-3] 
+    if tok.endswith(("sses", "xes", "ches", "shes")):
+        return tok[:-2] 
+    if tok.endswith("s"):
+        return tok[:-1] # databases, structures, algorithms
+    return tok
 
 def tokenize(text):
     """
@@ -30,7 +48,7 @@ def tokenize(text):
         list of tokens
     """
     text = (text or "").lower()
-    toks = [t for t in TOKEN_RE.findall(text) if t not in STOP]
+    toks = [stem(t) for t in TOKEN_RE.findall(text) if t not in STOP]
     toks += [m.group(1) + m.group(2) for m in CODE_RE.finditer(text)]  # "csce 221" -> "csce221"
     return toks
 
@@ -112,6 +130,9 @@ INTENTS = {
 }
 NOISE = {"level", "course", "courses", "class", "classes", "professor", "prof", "with", "a", "an", "the"}
 
+# bug in which a query would contain a word that: 1) is in STOP, 2) is not in NOISE, 3) isn't an intent, level, dept, course, and 4) no other terms left
+# accidently queried "best professor for csce 221" and got nothing
+QUERY_IGNORE = STOP | NOISE
 
 def parse_query(q, dept_codes=()):
     """'easy 300 level CSCE course' -> intent=easy, level=3, dept=CSCE, text=''
@@ -149,7 +170,7 @@ def parse_query(q, dept_codes=()):
         if hit:
             out["intent"] = out["intent"] or hit
             continue
-        if t not in NOISE:
+        if t not in QUERY_IGNORE:
             keep.append(t)
     out["text"] = " ".join(keep)
     return out
