@@ -2,7 +2,8 @@ import { AppShell, Text, Burger, Group } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 
 import SearchPage from './search_page.tsx'
-// import { SyllabusViewer } from './syllabus_viewer.tsx'
+import { SyllabusViewer } from './syllabus_viewer.tsx'
+import { Route, Routes } from 'react-router-dom'
 
 
 
@@ -28,8 +29,10 @@ function App() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        {/* <SyllabusViewer code="7fxrry8d6"/> */}
-        <SearchPage/>
+        <Routes>
+          <Route path="/" element={<SearchPage />} />
+          <Route path="/syllabus/:code" element={<SyllabusViewer/>} />
+        </Routes>
       </AppShell.Main>
     </AppShell>
   )

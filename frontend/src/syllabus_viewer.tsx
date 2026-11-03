@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import "./syllabus_viewer.css"
+import { Link, useParams } from "react-router-dom";
 
 type SyllabusComponent = {
   component_id: string;
@@ -42,7 +43,16 @@ function sanitizeHtml(html: string) {
   return DOMPurify.sanitize(absoluteHtml);
 }
 
-export function SyllabusViewer({ code }: Props) {
+export function SyllabusViewer() {
+  const { code } = useParams<{ code: string }>();
+  if (!code) {
+    return (
+      <main>
+        <p>No syllabus code was provided.</p>
+        <Link to="/">Go back to the search page</Link>
+      </main>
+    )
+  }
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -56,7 +66,7 @@ export function SyllabusViewer({ code }: Props) {
         setError("");
 
         const response = await fetch(
-          `/api/syllabus?code=${encodeURIComponent(code)}`,
+          `/api/syllabus?code=${encodeURIComponent(code!)}`,
           { signal: controller.signal },
         );
 

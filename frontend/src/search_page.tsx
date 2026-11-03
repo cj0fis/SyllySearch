@@ -1,8 +1,9 @@
 // import {react} from 'react'
 import { useState, useEffect } from 'react'
-import { Badge, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@mantine/core'
+import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@mantine/core'
 
 import type { QueryResponse, SearchResult } from './types'
+import { Link } from 'react-router-dom'
 
 function ScorePill({ label, value, color }: { label: string, value: string | number | null, color: string }) {
   if (value === null) return null
@@ -16,42 +17,82 @@ function ScorePill({ label, value, color }: { label: string, value: string | num
 }
 
 function ResultCard({ result }: { result: SearchResult }) {
-  const { doc, rating, difficulty, gpa, score } = result
+  const { doc, rating, difficulty, gpa, score } = result;
 
   return (
-    <Card shadow='sm' padding='lg' radius='md' withBorder>
-      <Stack gap='xs'>
-
-        <Group justify='space-between' align='flex-start'>
+    <Card shadow="sm" padding="lg" radius="md" withBorder>
+      <Stack gap="xs">
+        <Group justify="space-between" align="flex-start">
           <Stack gap={2}>
-            <Text fw={700} size='lg'>{doc.course_code} — {doc.subtitle}</Text>
-            <Text size='sm' c='dimmed'>{doc.term} · Section {doc.section}</Text>
+            <Text fw={700} size="lg">
+              {doc.course_code} — {doc.subtitle}
+            </Text>
+
+            <Text size="sm" c="dimmed">
+              {doc.term} · Section {doc.section}
+            </Text>
           </Stack>
-          <Badge color='blue' variant='filled' size='lg'>
+
+          <Badge color="blue" variant="filled" size="lg">
             Score: {(score * 100).toFixed(1)}%
           </Badge>
         </Group>
 
-        <Group gap='xs'>
-          <Text size='sm' c='dimmed'>
-            {doc.instructors.map(i => `${i.first} ${i.last}`).join(', ')}
+        <Group gap="xs">
+          <Text size="sm" c="dimmed">
+            {doc.instructors
+              .map((instructor) => `${instructor.first} ${instructor.last}`)
+              .join(", ")}
           </Text>
-          <ScorePill label='Prof. Rating' value={(rating * 100).toFixed(1) + "%"} color='green' />
-          <ScorePill label='Prof. Difficulty' value={(difficulty * 100).toFixed(1) + "%"} color='orange' />
+
+          <ScorePill
+            label="Prof. Rating"
+            value={`${(rating * 100).toFixed(1)}%`}
+            color="green"
+          />
+
+          <ScorePill
+            label="Prof. Difficulty"
+            value={`${(difficulty * 100).toFixed(1)}%`}
+            color="orange"
+          />
         </Group>
 
         <Divider />
 
-        <Text size='sm' lineClamp={3}>{doc.description}</Text>
+        <Text size="sm" lineClamp={3}>
+          {doc.description}
+        </Text>
 
-        <Group gap='xs'>
-          <ScorePill label='GPA' value={(gpa).toFixed(2)} color='teal' />
-          {doc.has_text && <Badge color='violet' variant='light'>Has Syllabus</Badge>}
+        <Group justify="space-between" align="center">
+          <Group gap="xs">
+            <ScorePill
+              label="GPA"
+              value={gpa.toFixed(2)}
+              color="teal"
+            />
+
+            {doc.has_text && (
+              <Badge color="violet" variant="light">
+                Has Syllabus
+              </Badge>
+            )}
+          </Group>
+
+          {doc.code && (
+            <Button
+              component={Link}
+              to={`/syllabus/${encodeURIComponent(doc.code)}`}
+              variant="light"
+              color="blue"
+            >
+              View syllabus
+            </Button>
+          )}
         </Group>
-
       </Stack>
     </Card>
-  )
+  );
 }
 
 export default function SearchPage() {
