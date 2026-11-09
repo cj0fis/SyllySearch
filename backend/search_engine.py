@@ -14,6 +14,7 @@ import pickle
 import re
 import sys
 from collections import Counter, defaultdict
+from difflib import get_close_matches
 
  
 # Tokenising
@@ -21,6 +22,66 @@ TOKEN_RE = re.compile(r"[a-z0-9]+")
 CODE_RE = re.compile(r"\b([a-z]{3,4})[\s-]?(\d{3})\b")
 STOP = {"a", "an", "and", "the", "of", "to", "in", "for", "on", "is", "with",
         "at", "by", "or", "this", "that", "be", "are", "as", "from", "will", "you"}
+
+# Abbreviations
+ABBREVIATIONS = {
+    "info": "information",
+    "intro": "introduction",
+    "introductory": "introduction",
+    "adv": "advanced",
+    "fund": "fundamentals",
+    "princ": "principles",
+    "gen": "general",
+    "appl": "application",
+    "dev": "development",
+    "intl": "international",
+    "comp": "computer",
+    "comput": "computing",
+    "sys": "system",
+    "syst": "system",
+    "systs": "system",
+    "db": "database",
+    "dbms": "database",
+    "netwk": "network",
+    "netw": "network",
+    "prog": "programming",
+    "alg": "algorithm",
+    "algo": "algorithm",
+    "archit": "architecture",
+    "tech": "technology",
+    "technol": "technology",
+    "engr": "engineering",
+    "engrg": "engineering",
+    "elec": "electrical",
+    "elect": "electrical",
+    "mech": "mechanical",
+    "mfg": "manufacturing",
+    "aero": "aerospace",
+    "environ": "environmental",
+    "mgmt": "management",
+    "mgt": "management",
+    "acct": "accounting",
+    "fin": "financial",
+    "admin": "administration",
+    "econ": "economics",
+    "orgnl": "organizational",
+    "calc": "calculus",
+    "geom": "geometry",
+    "probab": "probability",
+    "stats": "statistics",
+    "stat": "statistics",
+    "chem": "chemistry",
+    "phys": "physics",
+    "biol": "biology",
+    "astro": "astronomy",
+    "psych": "psychology",
+    "sociol": "sociology",
+    "hist": "history",
+    "govt": "government",
+    "lit": "literature",
+    "philos": "philosophy",
+    "educ": "education",
+}
 
 # light stemming on plurals
 # queries varying by plurality shouldn't return significantly different results
@@ -48,7 +109,10 @@ def tokenize(text):
         list of tokens
     """
     text = (text or "").lower()
-    toks = [stem(t) for t in TOKEN_RE.findall(text) if t not in STOP]
+
+    # Expand abbreviations before stemming
+    toks = [stem(ABBREVIATIONS.get(t, t)) for t in TOKEN_RE.findall(text) if t not in STOP]
+
     toks += [m.group(1) + m.group(2) for m in CODE_RE.finditer(text)]  # "csce 221" -> "csce221"
     return toks
 
@@ -57,7 +121,7 @@ def tokenize(text):
 # BM25F: syllabus text, titles and descriptions are scored; dept/instructor/level are filters (change if needed)
 FIELD_WEIGHTS = {
     "course_code":  3.0,        # Exact code match is a very strong signal
-    "subtitle":     2.5,        # Course name is highly relevant
+    "subtitle":     1.5,        # Course name is highly relevant
     "headings":     1.0,        # Structured text, medium weight
     "description":  2.0,        # Section headers
     "body":         1.0         # Full syllabus text, longest, most noise
@@ -82,11 +146,14 @@ class BM25FIndex:
         self.k1 = k1
         self.postings = defaultdict(dict)  # term -> {doc_idx: {field: tf}}
         self.field_len, self.avg_len, self.docs = [], {}, []
+        self.title_tokens = []
+        self.lookup_vocab = set()
 
     def build(self, docs):
         """docs: list of dicts with the BM25F fields above plus any metadata."""
         totals = Counter()
         for idx, d in enumerate(docs):
+            self.title_tokens.append(tokenize(d.get("subtitle", "")))
             self.docs.append(d)
             lens = {}
             for f in self.w:
@@ -95,6 +162,8 @@ class BM25FIndex:
                 totals[f] += len(toks)
                 for term, tf in Counter(toks).items():
                     self.postings[term].setdefault(idx, {})[f] = tf
+                if f in ("subtitle", "description"):
+                    self.lookup_vocab.update(toks)
             self.field_len.append(lens)
         n = max(len(docs), 1)
         self.avg_len = {f: (totals[f] / n) or 1.0 for f in self.w}
@@ -104,24 +173,104 @@ class BM25FIndex:
         n, df = len(self.docs), len(self.postings.get(term, ()))
         return math.log(1 + (n - df + 0.5) / (df + 0.5))
 
-    def search(self, query_text, candidates=None, k=200):
-        """candidates: optional set of doc indices (hard filters applied before scoring)."""
+    def search(self, query_text, candidates=None, k=250):
+        """
+        BM25F with typo recovery, query coverage,
+        and course subtitle matching.
+        """
+
+        query_terms = list(dict.fromkeys(tokenize(query_text)))
+
+        if not query_terms:
+            return []
+
+        expanded = []
+        corrected = {}
+
+        for term in query_terms:
+            if term in self.postings:
+                expanded.append((term, term, 1.0))
+                corrected[term] = term
+
+            elif len(term) >= 5:
+                alternatives = get_close_matches(
+                    str(term),
+                    [str(word) for word in self.lookup_vocab],
+                    n=1,
+                    cutoff=0.86
+                )
+
+                if alternatives:
+                    replacement = alternatives[0]
+                    expanded.append((term, replacement, 0.65))
+                    corrected[term] = replacement
+
         scores = defaultdict(float)
-        for term in set(tokenize(query_text)):
-            plist = self.postings.get(term)
+        hits = defaultdict(set)
+
+        for original, indexed, factor in expanded:
+            plist = self.postings.get(indexed)
+
             if not plist:
                 continue
-            idf = self._idf(term)
+
+            idf = self._idf(indexed)
+
             for idx, tfs in plist.items():
                 if candidates is not None and idx not in candidates:
                     continue
-                tf_t = sum(self.w[f] * tf / (1 - self.b[f] + self.b[f] * self.field_len[idx][f] / self.avg_len[f])
-                           for f, tf in tfs.items())
-                scores[idx] += idf * tf_t / (self.k1 + tf_t)
-        return sorted(scores.items(), key=lambda x: -x[1])[:k]
+
+                tf_t = sum(
+                    self.w[f] * tf / (
+                        1 - self.b[f]
+                        + self.b[f] * self.field_len[idx][f]
+                        / self.avg_len[f]
+                    )
+                    for f, tf in tfs.items()
+                )
+
+                scores[idx] += (
+                    factor * idf * tf_t / (self.k1 + tf_t)
+                )
+
+                hits[idx].add(original)
+
+        n_terms = len(query_terms)
+
+        for idx in scores:
+            coverage = len(hits[idx]) / n_terms
+
+            scores[idx] *= 0.70 + 0.30 * coverage
+
+            title_tokens = self.title_tokens[idx]
+            title_set = set(title_tokens)
+
+            title_overlap = sum(
+                corrected.get(term) in title_set
+                for term in query_terms
+            ) / n_terms
+
+            scores[idx] *= 1.0 + 0.30 * title_overlap
+
+            phrase = [
+                corrected.get(term, term)
+                for term in query_terms
+            ]
+
+            if n_terms >= 2 and any(
+                title_tokens[pos:pos + n_terms] == phrase
+                for pos in range(len(title_tokens) - n_terms + 1)
+            ):
+                scores[idx] *= 1.35
+
+        ranked = sorted(
+            scores.items(),
+            key=lambda x: -x[1]
+        )
+
+        return ranked if k is None else ranked[:k]
 
 
- 
 #query parsing
 INTENTS = {
     "easy": {"easy", "easiest", "easier", "gpa", "light", "chill", "simple"},
@@ -182,7 +331,7 @@ WEIGHTS = {
     "easy": (0.35, 0.10, 0.25, 0.30),
     "hard": (0.35, 0.10, 0.30, 0.25),
     "good": (0.35, 0.40, 0.00, 0.25),
-    None:   (0.55, 0.20, 0.00, 0.25),
+    None:   (0.65, 0.175, 0.00, 0.175),
 }
 PRIOR_RATING, PRIOR_DIFF, SHRINK_M = 3.5, 3.0, 5  # shrink ratings with few reviews toward the mean
 
@@ -350,6 +499,49 @@ def show(engine, q):
         d, i = r["doc"], r["doc"]["instructors"][0]
         print(f"  {d['course_code']:9} {d['subtitle'][:24]:24} {i['first'][:1]}. {i['last']:6} "
               f"score={r['score']:.3f} bm25f={r['bm25f']:.2f} rate={r['rating']:.2f} gpa={r['gpa']:.2f}")
+
+
+def debug_course(engine, query, dept, course_number):
+    parsed, results = engine.search(query, k=len(engine.docs))
+
+    print(f"\nQuery: {query}")
+    print(f"Parsed: {parsed}")
+    print(f"Retrived ranked results count: {len(results)}")
+
+    print(f"\n===== {dept} {course_number} FINAL RANK =====")
+
+    found = False
+
+    for rank, result in enumerate(results, start=1):
+        doc = result["doc"]
+
+        if (
+            str(doc["dept"]).upper() == str(dept).upper()
+            and str(doc["course_number"]) == str(course_number)
+        ):
+            found = True
+
+            print(f"Course: {doc['course_code']}")
+            print(f"Subtitle: {doc['subtitle']}")
+            print(f"Final Rank: {rank}")
+            print(f"Final Score: {result['score']:.6f}")
+            print(f"BM25F Score: {result['bm25f']:.6f}")
+            print(f"Professor Rating: {result['rating']:.6f}")
+            print(f"GPA: {result['gpa']:.6f}")
+
+    if not found:
+        print("Course not found in retrived ranked results.")
+
+    print("\n===== TOP 10 SEARCH RESULTS =====")
+
+    for rank, result in enumerate(results[:10], start=1):
+        doc = result["doc"]
+
+        print(
+            f"{rank}. {doc['course_code']} - "
+            f"{doc['subtitle']} "
+            f"(Score: {result['score']:.6f})"
+        )
 
 
 if __name__ == "__main__":
