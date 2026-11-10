@@ -10,15 +10,11 @@ This release contains the core ranking algorithm and a demo.
 
 - `search_engine.py`: the core algorithm: tokenizing, query parsing, BM25F indexing, reranking
 - `test_index.py`: test script that checks the algorithm on a small fake dataset
-- `index.pkl`: prebuilt search index over the actual dataset
-
-`index.pkl` is necessary if the user would like to test queries on their own. Place it in the same folder as `search_engine.py`.
-The demo is capable of running without `index.pkl`, but the dataset is pre-selected and the queries are static.
 
 ## Setup
 
 - Python 3.9 or newer
-- No 3rd party dependencies (assuming the inclusion of `index.pkl`)
+- No 3rd party dependencies
 
 
 ## The algorithm
@@ -46,12 +42,6 @@ The script prints the result of each check (to a fake dataset) and finishes with
 python search_engine.py --demo
 ```
 
-This runs a few sample queries against the same fake dataset and prints the ranked results, including the BM25F score, instructor rating, and GPA per result.
+This runs a few sample queries against the same fake dataset and prints the ranked results, including the BM25F score, instructor rating, and GPA per result. 
 
-3. Search the existing dataset (requires `index.pkl`):
-
-```bash
-python search_engine.py "best prof for csce 221"
-python search_engine.py "easy 300 level csce course"
-python search_engine.py "information systems csce"
-```
+Note that this release does not contain the database URL or a cached index. Attempting to run `search_engine.py` with arguments/query will fail.

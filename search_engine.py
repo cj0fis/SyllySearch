@@ -553,11 +553,7 @@ if __name__ == "__main__":
     else:
         
         cache = "index.pkl"
-        if os.path.exists(cache):
-            eng = SyllySearch.load(cache)
-        else:
-            from dotenv import load_dotenv
-            load_dotenv()
-            eng = SyllySearch(*load_from_db(os.getenv("DATABASE_URL")))
-            eng.save(cache) 
+        if not os.path.exists(cache) and not os.path.exists(".env"):
+            sys.exit("index.pkl and .env not found. This release does not include the dataset; "
+                     "use --demo or run test_index.py instead.")
         show(eng, " ".join(args))
