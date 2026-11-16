@@ -44,6 +44,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://syllysearch.caseyroper.com",
+        "api.caseyroper.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -86,4 +88,4 @@ def query(query_text: str):
 if __name__ == "__main__":
     if not os.path.exists(cache):
         load_engine()
-    uvicorn.run("server:app", port=8080, reload=True)
+    uvicorn.run("server:app", port=8000, reload=True)
