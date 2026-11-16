@@ -137,7 +137,11 @@ export default function SearchPage() {
 
         const delay = setTimeout(async () => {
             try {
-                const response = await fetch(`http://localhost:8080/query?query_text=${encodeURIComponent(query)}`)
+                const ENDPOINT = import.meta.env.DEV
+                  ? "http://localhost:8000"         // in dev mode, connect to localhost backend
+                  : "https://api.caseyroper.com"    // in build mode, connect to deployed backend
+
+                const response = await fetch(`${ENDPOINT}/query?query_text=${encodeURIComponent(query)}`)
                 const data: QueryResponse = await response.json()
                 setResults(data[1])
             } catch (error) {
