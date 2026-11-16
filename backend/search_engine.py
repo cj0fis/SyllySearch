@@ -16,6 +16,7 @@ import sys
 from collections import Counter, defaultdict
 from difflib import get_close_matches
 
+
  
 # Tokenising
 TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -421,39 +422,89 @@ class SyllySearch:
 def load_from_db(database_url):
     import psycopg2  # imported lazily so --demo works without it
     conn = psycopg2.connect(database_url, options="-c statement_timeout=30000")
-    cur = conn.cursor()
-    print("loading from database")
-    cur.execute("""
-        SELECT s.entity_id, s.code, s.dept, s.course_number, s.section_number, s.subtitle, s.sections,
-               t.name, i.entity_id, i.first_name, i.last_name
+    stream_cur = conn.cursor(name="syllabi_stream")
+    stream_cur.itersize=500
+
+
+    print("loading from database...")
+    stream_cur.execute("""
+        SELECT
+            s.entity_id,
+            s.code,
+            s.dept,
+            s.course_number,
+            s.section_number,
+            s.subtitle,
+            s.sections,
+            t.name AS term,
+            COALESCE(
+                jsonb_agg(
+                    jsonb_build_object(
+                        'id', i.entity_id,
+                        'first', COALESCE(i.first_name, ''),
+                        'last', COALESCE(i.last_name, '')
+                    )
+                ) FILTER (WHERE i.entity_id IS NOT NULL),
+                '[]'::jsonb
+            ) AS instructors
         FROM syllabi s
         LEFT JOIN instructors_syllabi isj ON isj.syllabus_id = s.entity_id
         LEFT JOIN instructors i ON i.entity_id = isj.instructor_id
         LEFT JOIN terms t ON t.entity_id = s.term_id
+        GROUP BY
+            s.entity_id,
+            s.code,
+            s.dept,
+            s.course_number,
+            s.section_number,
+            s.subtitle,
+            s.sections,
+            t.name
     """)
 
-    by_id = {}
-    for eid, code, dept, num, sec, sub, sections, term, iid, first, last in cur.fetchall():
-        d = by_id.get(eid)
-        if d is None:
-            sections = sections or []  # NULL = not scraped yet; still searchable by code/subtitle
-            desc = " ".join(s["text"] for s in sections if "description" in (s.get("name") or "").lower())
-            d = by_id[eid] = {
-                "id": eid, "code": code, "dept": dept, "course_number": str(num), "section": sec,
-                "term": term, "subtitle": sub or "", "course_code": f"{dept} {num}",
-                "headings": " ".join(s.get("name") or "" for s in sections),
-                "description": desc,
-                "body": " ".join(s.get("text") or "" for s in sections),
-                "has_text": bool(sections), "instructors": [],
-            }
-        if iid:
-            d["instructors"].append({"id": iid, "first": first or "", "last": last or ""})
+    syllabi = []
+    num_loaded = 0
+    for eid, code, dept, num, sec, sub, sections, term, instructors in stream_cur:
+        sections = sections or []
+        instructors = instructors or []
 
+        desc = " ".join(
+            s.get("text") or ""
+            for s in sections
+            if "description" in (s.get("name") or "").lower()
+        )
+
+        syllabi.append({
+            "id": eid,
+            "code": code,
+            "dept": dept,
+            "course_number": str(num),
+            "section": sec,
+            "term": term,
+            "subtitle": sub or "",
+            "course_code": f"{dept} {num}",
+            "headings": " ".join(s.get("name") or "" for s in sections),
+            "description": desc,
+            "body": " ".join(s.get("text") or "" for s in sections),
+            "has_text": bool(sections),
+            "instructors": instructors or [],
+        })
+
+        num_loaded += 1
+        if num_loaded % 50 == 0:
+            print(f"Loaded {num_loaded} syllabi")
+
+    print(f"Loaded {num_loaded} syllabi")
+            
+    stream_cur.close()
+    cur = conn.cursor()
+    print("ranking by RMP score...")
     cur.execute("""SELECT instructor_id, professor_id, overall_rating, difficulty, num_ratings
                    FROM rmp WHERE instructor_id IS NOT NULL ORDER BY num_ratings NULLS FIRST""")
     rmp = {iid: {"prof_id": pid, "rating": r, "difficulty": df, "n": n}  # most-reviewed row wins
            for iid, pid, r, df, n in cur.fetchall()}
 
+    print("ranking by grade distribution...")
     cur.execute("""SELECT dept, course_number, lower(last_name), lower(left(first_initial, 1)), AVG(gpa::float)
                    FROM grade_distributions WHERE gpa IS NOT NULL
                    GROUP BY dept, course_number, lower(last_name), lower(left(first_initial, 1))""")
@@ -467,7 +518,8 @@ def load_from_db(database_url):
                    WHERE t.typname = 'dept_code'""")
     dept_codes = [r[0] for r in cur.fetchall()]
     conn.close()
-    return list(by_id.values()), rmp, grades, dept_codes
+    print("done creating index...")
+    return syllabi, rmp, grades, dept_codes
 
 
  

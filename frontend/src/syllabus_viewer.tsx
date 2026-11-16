@@ -29,9 +29,9 @@ type ApiResponse = {
   }>;
 };
 
-type Props = {
-  code: string;
-};
+// type Props = {
+//   code: string;
+// };
 
 const SIMPLE_SYLLABUS_URL = "https://tamu.simplesyllabus.com";
 
