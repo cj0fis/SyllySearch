@@ -22,10 +22,7 @@ function App() {
           alignItems: 'center',
         }}
       >
-        <Link
-          to="/"
-          style={{ textDecoration: 'none' }}
-        >
+        <a href="/" style={{ textDecoration: 'none' }}>
           <Text
             size="2rem"
             fw={800}
@@ -34,7 +31,7 @@ function App() {
           >
             SyllySearch
           </Text>
-        </Link>
+        </a>
         
       </AppShell.Header>
 

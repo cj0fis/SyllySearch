@@ -151,7 +151,7 @@ export default function SearchPage() {
     <Stack>
       <Text size='xl'>Search</Text>
       <Input
-        placeholder="Search"
+        placeholder= 'Try "CSCE 221", "data structures", or "hard CSCE course"'
         value={query}
         onChange={(e) => {
           const newQuery = e.target.value;
