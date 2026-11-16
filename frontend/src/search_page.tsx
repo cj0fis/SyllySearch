@@ -1,10 +1,9 @@
 // import {react} from 'react'
 import { useState, useEffect } from 'react'
-import { Badge, Button, Card, Divider, Group, Input, RangeSlider, Stack, Text, Tooltip } from '@mantine/core'
+import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@mantine/core'
 
 import type { QueryResponse, SearchResult } from './types'
-import { Link } from 'react-router-dom'
-import ParamSlider from './param_slider'
+import { Link, useSearchParams } from 'react-router-dom'
 
 function ScorePill({ label, value, color }: { label: string, value: string | number | null, color: string }) {
   if (value === null) return null
@@ -97,15 +96,23 @@ function ResultCard({ result }: { result: SearchResult }) {
 }
 
 export default function SearchPage() {
-    const [query, setQuery] = useState('')
+    // ADDED: Read and update the query in the URL
+    // added to allow for read/updating the query stored in the URL
+    // will allow user to navigate back to existing results after viewing syllabus
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [query, setQuery] = useState(
+      () => searchParams.get('q') ?? ''
+    );
     const [results, setResults] = useState<SearchResult[] | null>(null)
 
 
 
 
     useEffect(() => {
-        if (query.trim() === '')
-            return
+        if (query.trim() === '') {
+            setResults(null);
+            return;
+        }
 
         const delay = setTimeout(async () => {
             try {
@@ -125,14 +132,18 @@ export default function SearchPage() {
       <Input
         placeholder="Search"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      
-      <ParamSlider min={0.0} max={4.0} label="GPA" />
-      <ParamSlider min={0} max={100} label="Prof. Rating" />
-      <ParamSlider min={0} max={100} label="Prof. Difficulty" />
-      
-      
+        onChange={(e) => {
+          const newQuery = e.target.value;
+
+          setQuery(newQuery);
+
+          // save query in URL so user can navigate back to their existing results page instead of wiping their progress
+          setSearchParams(
+            newQuery ? { q: newQuery } : {},
+            { replace: true }
+          );
+        }}
+      /> 
       {results && results.map((result, index) => (
         <ResultCard key={index} result={result} />
       ))}

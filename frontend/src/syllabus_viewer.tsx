@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import "./syllabus_viewer.css"
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { Button } from "@mantine/core";
 
 type SyllabusComponent = {
   component_id: string;
@@ -45,6 +46,7 @@ function sanitizeHtml(html: string) {
 
 export function SyllabusViewer() {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   if (!code) {
     return (
       <main>
@@ -119,22 +121,34 @@ export function SyllabusViewer() {
     .sort((a, b) => a.sort_order - b.sort_order);
 
   return (
-    <article className="syllabus">
-      <header className="syllabus-header">
-        <p>{syllabus.term.name}</p>
-        <h1>{syllabus.title}</h1>
-        <p>{syllabus.sub_title}</p>
-      </header>
+    <>
+      {/* navigate back to the results page from the View Syllabus prompt */}
+      <Button
+        variant="subtle"
+        color="blue"
+        onClick={() => navigate(-1)}
+        mb="md"
+      >
+        ← Back to results
+      </Button>
 
-      {components.map((component) => (
-        <section
-          key={component.component_id}
-          className="syllabus-section"
-          dangerouslySetInnerHTML={{
-            __html: sanitizeHtml(component.html),
-          }}
-        />
-      ))}
-    </article>
+      <article className="syllabus">
+        <header className="syllabus-header">
+          <p>{syllabus.term.name}</p>
+          <h1>{syllabus.title}</h1>
+          <p>{syllabus.sub_title}</p>
+        </header>
+
+        {components.map((component) => (
+          <section
+            key={component.component_id}
+            className="syllabus-section"
+            dangerouslySetInnerHTML={{
+              __html: sanitizeHtml(component.html),
+            }}
+          />
+        ))}
+      </article>
+    </>
   );
 }
