@@ -1,6 +1,6 @@
 // import {react} from 'react'
 import { useState, useEffect } from 'react'
-import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Progress } from '@mantine/core'
+import { Badge, Card, Divider, Group, Input, Stack, Text, Progress } from '@mantine/core'
 
 import type { QueryResponse, SearchResult } from './types'
 import { useNavigate, useSearchParams } from 'react-router-dom'

@@ -1,9 +1,9 @@
-import { AppShell, Text, Group } from '@mantine/core'
+import { AppShell, Text } from '@mantine/core'
 
 import SearchPage from './search_page.tsx'
 import { SyllabusViewer } from './syllabus_viewer.tsx'
 import { Route, Routes } from 'react-router-dom'
-import { Link } from 'react-router-dom'
+// import { Link } from 'react-router-dom'
 
 
 function App() {
