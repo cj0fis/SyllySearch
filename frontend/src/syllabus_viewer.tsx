@@ -62,17 +62,18 @@ export function SyllabusViewer() {
   useEffect(() => {
     const controller = new AbortController();
 
-    const SYLLABUS_ENDPOINT = import.meta.env.DEV
-        ? `/api/syllabus`
-        : `https://tamu.simplesyllabus.com/api2/doc-full-page-get`;
+
+    const API_BASE_URL = import.meta.env.DEV
+    ? "http://localhost:8000"
+    : "https://api.caseyroper.com";
 
     async function loadSyllabus() {
       try {
         setLoading(true);
         setError("");
-        
+
         const response = await fetch(
-          `${SYLLABUS_ENDPOINT}?code=${encodeURIComponent(code!)}`,
+          `${API_BASE_URL}/syllabus?code=${encodeURIComponent(code!)}`,
           { signal: controller.signal },
         );
 
