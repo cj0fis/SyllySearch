@@ -1,26 +1,55 @@
 // import {react} from 'react'
 import { useState, useEffect } from 'react'
-import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Tooltip } from '@mantine/core'
+import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Progress } from '@mantine/core'
 
 import type { QueryResponse, SearchResult } from './types'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
-function ScorePill({ label, value, color }: { label: string, value: string | number | null, color: string }) {
-  if (value === null) return null
+// replaced the ScorePills with visual bars to display the info
+// thought it would be more interesting to look at
+// also visually quicker to compare between cards than looking at direct value of ScorePill
+function ScoreBar({label, value, displayValue, color}: {label: string; value: number; displayValue: string; color: string;}) {
   return (
-    <Tooltip label={label}>
-      <Badge color={color} variant='light' size='lg'>
-        {label}: {value}
-      </Badge>
-    </Tooltip>
-  )
+    <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
+
+      <Text size="sm" fw={700}>
+        {displayValue}
+      </Text>
+
+      <Progress
+        value={Math.max(0, Math.min(100, value))}
+        color={color}
+        size="sm"
+        radius="xl"
+      />
+    </Stack>
+  );
 }
 
 function ResultCard({ result }: { result: SearchResult }) {
   const { doc, rating, difficulty, gpa, score } = result;
+  const navigate = useNavigate();
+  const syllabusPath = doc.code
+    ? `/syllabus/${encodeURIComponent(doc.code)}`
+    : null;
 
   return (
-    <Card shadow="sm" padding="lg" radius="md" withBorder>
+    <Card
+      shadow="sm"
+      padding="lg"
+      radius="md"
+      withBorder
+      className={syllabusPath ? 'course-card' : undefined}
+      onClick={() => {
+        if (syllabusPath) navigate(syllabusPath);
+      }}
+      style={{
+        cursor: syllabusPath ? 'pointer' : 'default',
+      }}
+    >
       <Stack gap="xs">
         <Group justify="space-between" align="flex-start">
           <Stack gap={2}>
@@ -38,25 +67,11 @@ function ResultCard({ result }: { result: SearchResult }) {
           </Badge>
         </Group>
 
-        <Group gap="xs">
-          <Text size="sm" c="dimmed">
-            {doc.instructors
-              .map((instructor) => `${instructor.first} ${instructor.last}`)
-              .join(", ")}
-          </Text>
-
-          <ScorePill
-            label="Prof. Rating"
-            value={`${(rating * 100).toFixed(1)}%`}
-            color="green"
-          />
-
-          <ScorePill
-            label="Prof. Difficulty"
-            value={`${(difficulty * 100).toFixed(1)}%`}
-            color="orange"
-          />
-        </Group>
+        <Text size="sm" c="dimmed">
+          {doc.instructors
+            .map((instructor) => `${instructor.first} ${instructor.last}`)
+            .join(", ")}
+        </Text>
 
         <Divider />
 
@@ -64,31 +79,37 @@ function ResultCard({ result }: { result: SearchResult }) {
           {doc.description}
         </Text>
 
+        <Group gap="md" grow align="flex-start">
+          <ScoreBar
+            label="Prof. Rating"
+            value={rating * 100}
+            displayValue={`${(rating * 100).toFixed(1)}%`}
+            color="green"
+          />
+
+          <ScoreBar
+            label="Prof. Difficulty"
+            value={difficulty * 100}
+            displayValue={`${(difficulty * 100).toFixed(1)}%`}
+            color="orange"
+          />
+
+          <ScoreBar
+            label="Course Avg. GPA"
+            value={gpa * 100}
+            displayValue={(gpa * 4).toFixed(2)}
+            color="#A63737"
+          />
+        </Group>
+
         <Group justify="space-between" align="center">
           <Group gap="xs">
-            <ScorePill
-              label="GPA"
-              value={(gpa*4).toFixed(2)}
-              color="teal"
-            />
-
             {doc.has_text && (
               <Badge color="violet" variant="light">
                 Has Syllabus
               </Badge>
             )}
           </Group>
-
-          {doc.code && (
-            <Button
-              component={Link}
-              to={`/syllabus/${encodeURIComponent(doc.code)}`}
-              variant="light"
-              color="blue"
-            >
-              View syllabus
-            </Button>
-          )}
         </Group>
       </Stack>
     </Card>
