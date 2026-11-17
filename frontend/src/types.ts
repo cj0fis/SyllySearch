@@ -21,9 +21,9 @@ export interface Syllabus {
 export interface SearchResult {
     doc: Syllabus
     bm25f: number
-    rating: number
-    difficulty: number
-    gpa: number
+    rating: number | null
+    difficulty: number | null
+    gpa: number | null
     score: number
 }
 

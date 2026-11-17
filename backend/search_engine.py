@@ -356,7 +356,7 @@ def signals(doc, rmp, grades):
             g = grades.get((doc["dept"], str(doc["course_number"]), ins["last"].lower(), None))
         if g is not None:
             gs.append(g / 4)
-    mean = lambda xs: sum(xs) / len(xs) if xs else 0.5
+    mean = lambda xs: sum(xs) / len(xs) if xs else None
     return mean(rs), mean(ds), mean(gs)
 
 
@@ -369,8 +369,15 @@ def rerank(scored, docs, intent, rmp, grades, include_full_doc: bool = False):
     for idx, s in scored:
         d = docs[idx]
         rating, diff, gpa = signals(d, rmp, grades)
-        diff_sig = (1 - diff) if intent == "easy" else diff  # easy -> low difficulty, hard -> high
-        final = w_bm * s / top + w_r * rating + w_d * diff_sig + w_g * (gpa if intent != "hard" else 1 - gpa)
+        parts = [(w_bm, s / top)]
+        if rating is not None:
+            parts.append((w_r, rating))
+        if diff is not None:
+            parts.append((w_d, (1 - diff) if intent == "easy" else diff))
+        if gpa is not None:
+            parts.append((w_g, gpa if intent != "hard" else 1 - gpa))
+        total_w = sum(w for w, _ in parts) or 1.0
+        final = sum(w * v for w, v in parts) / total_w
         if not include_full_doc:
             slim = {k: v for k, v in d.items() if k not in ("headings", "body")}
             out.append({"doc": slim, "bm25f": s, "rating": rating, "difficulty": diff, "gpa": gpa, "score": final})
@@ -547,11 +554,12 @@ def demo_engine():
 def show(engine, q):
     p, res = engine.search(q)
     print(f"\n> {q}\n  parsed: {p}")
+    fmt = lambda v: "N/A" if v is None else f"{v:.2f}"
     for r in res:
-        d, i = r["doc"], r["doc"]["instructors"][0]
+        d = r["doc"]
+        i = d["instructors"][0] if d["instructors"] else {"first": "?", "last": "unknown"}
         print(f"  {d['course_code']:9} {d['subtitle'][:24]:24} {i['first'][:1]}. {i['last']:6} "
-              f"score={r['score']:.3f} bm25f={r['bm25f']:.2f} rate={r['rating']:.2f} gpa={r['gpa']:.2f}")
-
+              f"score={r['score']:.3f} bm25f={r['bm25f']:.2f} rate={fmt(r['rating'])} gpa={fmt(r['gpa'])}")
 
 def debug_course(engine, query, dept, course_number):
     parsed, results = engine.search(query, k=len(engine.docs))
@@ -578,8 +586,8 @@ def debug_course(engine, query, dept, course_number):
             print(f"Final Rank: {rank}")
             print(f"Final Score: {result['score']:.6f}")
             print(f"BM25F Score: {result['bm25f']:.6f}")
-            print(f"Professor Rating: {result['rating']:.6f}")
-            print(f"GPA: {result['gpa']:.6f}")
+            print(f"Professor Rating: {result['rating']}")
+            print(f"GPA: {result['gpa']}")
 
     if not found:
         print("Course not found in retrived ranked results.")

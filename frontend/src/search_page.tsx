@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 // replaced the ScorePills with visual bars to display the info
 // thought it would be more interesting to look at
 // also visually quicker to compare between cards than looking at direct value of ScorePill
-function ScoreBar({label, value, displayValue, color}: {label: string; value: number; displayValue: string; color: string;}) {
+function ScoreBar({label, value, displayValue, color}: {label: string; value: number | null; displayValue: string; color: string;}) {
   return (
     <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
       <Text size="xs" c="dimmed">
@@ -20,7 +20,7 @@ function ScoreBar({label, value, displayValue, color}: {label: string; value: nu
       </Text>
 
       <Progress
-        value={Math.max(0, Math.min(100, value))}
+        value={value == null ? 0 : Math.max(0, Math.min(100, value))}
         color={color}
         size="sm"
         radius="xl"
@@ -82,22 +82,22 @@ function ResultCard({ result }: { result: SearchResult }) {
         <Group gap="md" grow align="flex-start">
           <ScoreBar
             label="Prof. Rating"
-            value={rating * 100}
-            displayValue={`${(rating * 100).toFixed(1)}%`}
+            value={rating == null ? null : rating * 100}
+            displayValue={rating == null ? "N/A" : `${(rating * 100).toFixed(1)}%`}
             color="green"
           />
 
           <ScoreBar
             label="Prof. Difficulty"
-            value={difficulty * 100}
-            displayValue={`${(difficulty * 100).toFixed(1)}%`}
+            value={difficulty == null ? null : difficulty * 100}
+            displayValue={difficulty == null ? "N/A" : `${(difficulty * 100).toFixed(1)}%`}
             color="orange"
           />
 
           <ScoreBar
             label="Course Avg. GPA"
-            value={gpa * 100}
-            displayValue={(gpa * 4).toFixed(2)}
+            value={gpa == null ? null : gpa * 100}
+            displayValue={gpa == null ? "N/A" : (gpa * 4).toFixed(2)}
             color="#A63737"
           />
         </Group>
