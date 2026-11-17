@@ -15,6 +15,7 @@ import re
 import sys
 from collections import Counter, defaultdict
 from difflib import get_close_matches
+import time
 
 
  
@@ -431,9 +432,9 @@ def load_from_db(database_url):
     conn = psycopg2.connect(database_url, options="-c statement_timeout=30000")
     stream_cur = conn.cursor(name="syllabi_stream")
     stream_cur.itersize=500
+    start_time = time.time()
 
-
-    print("loading from database...")
+    print(f"[{time.time()-start_time:.3f}s] loading from database...")
     stream_cur.execute("""
         SELECT
             s.entity_id,
@@ -498,20 +499,20 @@ def load_from_db(database_url):
         })
 
         num_loaded += 1
-        if num_loaded % 50 == 0:
-            print(f"Loaded {num_loaded} syllabi")
+        if num_loaded % 500 == 0:
+            print(f"[{time.time()-start_time:.3f}s] Loaded {num_loaded} syllabi")
 
-    print(f"Loaded {num_loaded} syllabi")
+    print(f"[{time.time()-start_time:.3f}s] Loaded {num_loaded} syllabi")
             
     stream_cur.close()
     cur = conn.cursor()
-    print("ranking by RMP score...")
+    print(f"[{time.time()-start_time:.3f}s] ranking by RMP score...")
     cur.execute("""SELECT instructor_id, professor_id, overall_rating, difficulty, num_ratings
                    FROM rmp WHERE instructor_id IS NOT NULL ORDER BY num_ratings NULLS FIRST""")
     rmp = {iid: {"prof_id": pid, "rating": r, "difficulty": df, "n": n}  # most-reviewed row wins
            for iid, pid, r, df, n in cur.fetchall()}
 
-    print("ranking by grade distribution...")
+    print(f"[{time.time()-start_time:.3f}s] ranking by grade distribution...")
     cur.execute("""SELECT dept, course_number, lower(last_name), lower(left(first_initial, 1)), AVG(gpa::float)
                    FROM grade_distributions WHERE gpa IS NOT NULL
                    GROUP BY dept, course_number, lower(last_name), lower(left(first_initial, 1))""")
@@ -525,7 +526,7 @@ def load_from_db(database_url):
                    WHERE t.typname = 'dept_code'""")
     dept_codes = [r[0] for r in cur.fetchall()]
     conn.close()
-    print("done creating index...")
+    print(f"[{time.time()-start_time:.3f}s] done creating index...")
     return syllabi, rmp, grades, dept_codes
 
 
