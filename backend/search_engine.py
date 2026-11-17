@@ -17,7 +17,8 @@ from collections import Counter, defaultdict
 from difflib import get_close_matches
 import time
 
-
+##TODO: Use positional index on instructor and subtitle values to allow for better fuzzy search
+## -> this may require creating a second, separate, index that we simulatneously search and compare results with bm25
  
 # Tokenising
 TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -126,7 +127,8 @@ FIELD_WEIGHTS = {
     "subtitle":     1.5,        # Course name is highly relevant
     "headings":     1.0,        # Structured text, medium weight
     "description":  2.0,        # Section headers
-    "body":         1.0         # Full syllabus text, longest, most noise
+    "body":         1.0,        # Full syllabus text, longest, most noise
+    "instructor":   2.0
     }
 
 # Within the body sections, how much are each section weighted?
@@ -135,7 +137,8 @@ FIELD_B = {
     "subtitle": 0.3,
     "headings": 0.5,
     "description": 0.6,
-    "body": 0.75
+    "body": 0.75,
+    "instructor": 0.5,
     }
 
 K1 = 1.2
