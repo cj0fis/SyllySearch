@@ -85,7 +85,7 @@ def get_index_stats():
 
 @app.get("/query")
 def query(query_text: str):
-    return eng.search(query_text)
+    return eng.search(query_text, 50)
 
 @app.get("/syllabus")
 async def get_syllabus(code: str):
