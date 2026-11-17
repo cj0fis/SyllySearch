@@ -169,7 +169,8 @@ export default function SearchPage() {
           );
         }}
       /> 
-      {results && results.map((result, index) => (
+      {query && results && <Text c="dimmed">{results.length} Result{results.length == 1 ? "" : "s"} for '{query}'</Text>}
+      {results && results.length > 0 && results.map((result, index) => (
         <ResultCard key={index} result={result} />
       ))}
     </Stack>
