@@ -62,13 +62,18 @@ export function SyllabusViewer() {
   useEffect(() => {
     const controller = new AbortController();
 
+
+    const API_BASE_URL = import.meta.env.DEV
+    ? "http://localhost:8000"
+    : "https://api.caseyroper.com";
+
     async function loadSyllabus() {
       try {
         setLoading(true);
         setError("");
 
         const response = await fetch(
-          `/api/syllabus?code=${encodeURIComponent(code!)}`,
+          `${API_BASE_URL}/syllabus?code=${encodeURIComponent(code!)}`,
           { signal: controller.signal },
         );
 

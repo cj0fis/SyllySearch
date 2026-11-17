@@ -1,6 +1,6 @@
 // import {react} from 'react'
 import { useState, useEffect } from 'react'
-import { Badge, Button, Card, Divider, Group, Input, Stack, Text, Progress } from '@mantine/core'
+import { Badge, Card, Divider, Group, Input, Stack, Text, Progress } from '@mantine/core'
 
 import type { QueryResponse, SearchResult } from './types'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -137,7 +137,11 @@ export default function SearchPage() {
 
         const delay = setTimeout(async () => {
             try {
-                const response = await fetch(`http://localhost:8080/query?query_text=${encodeURIComponent(query)}`)
+                const ENDPOINT = import.meta.env.DEV
+                  ? "http://localhost:8000"         // in dev mode, connect to localhost backend
+                  : "https://api.caseyroper.com"    // in build mode, connect to deployed backend
+
+                const response = await fetch(`${ENDPOINT}/query?query_text=${encodeURIComponent(query)}`)
                 const data: QueryResponse = await response.json()
                 setResults(data[1])
             } catch (error) {
@@ -151,7 +155,7 @@ export default function SearchPage() {
     <Stack>
       <Text size='xl'>Search</Text>
       <Input
-        placeholder="Search"
+        placeholder= 'Try "CSCE 221", "data structures", or "hard CSCE course"'
         value={query}
         onChange={(e) => {
           const newQuery = e.target.value;

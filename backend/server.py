@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import httpx
+import requests
 import uvicorn
 from db_utils import get_db, get_dept_codes
 
@@ -44,6 +46,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://syllysearch.caseyroper.com",
+        "api.caseyroper.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -83,7 +87,23 @@ def get_index_stats():
 def query(query_text: str):
     return eng.search(query_text)
 
+@app.get("/syllabus")
+async def get_syllabus(code: str):
+    url = "https://tamu.simplesyllabus.com/api2/doc-full-page-get"
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/129.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json, text/plain, */*",
+    }
+    resp = requests.get(url, headers=headers, params={"code": code})
+    resp.raise_for_status()
+    return resp.json()
+    
+
 if __name__ == "__main__":
     if not os.path.exists(cache):
         load_engine()
-    uvicorn.run("server:app", port=8080, reload=True)
+    uvicorn.run("server:app", port=8000, reload=True)
